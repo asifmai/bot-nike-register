@@ -1,7 +1,10 @@
 const puppeteer = require('puppeteer-extra');
+const fs = require('fs');
 const StealthPlugin = require('puppeteer-extra-plugin-stealth');
-const {siteLink, proxy, proxyUser, proxyPassword} = require('./keys');
+const {siteLink, accountsPerProxy} = require('./keys');
 const accountDetails = require('./keys').account;
+let proxies = [];
+let accountsCreated = 1;
 
 const run = () => new Promise(async (resolve, reject) => {
   try {
@@ -9,7 +12,14 @@ const run = () => new Promise(async (resolve, reject) => {
 
     console.log('Bot Started...');
 
-    await createAccount(accountDetails);
+    await fetchProxies();
+
+    for (let i = 1; i < proxies.length; i++) {
+      for (let j = 0; j < accountsPerProxy; j++) {
+        await createAccount(accountDetails, proxies[i]);
+      }
+    }
+
     
     console.log('Bot Finished...');
     resolve(true);
@@ -19,20 +29,19 @@ const run = () => new Promise(async (resolve, reject) => {
   }
 })
 
-const createAccount = (account) => new Promise(async (resolve, reject) => {
+const createAccount = (account, proxy) => new Promise(async (resolve, reject) => {
   try {
+    console.log(`${accountsCreated}/${proxies.length * accountsPerProxy} - Creating account using proxy ${proxy.address}...`);
     account.dob = account.dob.replace(/^.*?(?=\/)/gi, account.month);
-    console.log(accountDetails);
     const browser = await puppeteer.launch({
       headless: false,
-      args: [`--proxy-server=${proxy}`]
+      args: [`--proxy-server=${proxy.address}`]
     });
 
     // Launch Page and Goto siteLink
-    console.log('Loading site...');
     const page = await browser.newPage();
     await page.setViewport({ width: 1366, height: 768 });
-    await page.authenticate({username: proxyUser, password: proxyPassword});
+    await page.authenticate({username: proxy.userName, password: proxy.password});
     await page.goto(siteLink, {timeout: 0, waitUntil: 'load'});
 
     // Navigate to Sign Up
@@ -81,16 +90,44 @@ const createAccount = (account) => new Promise(async (resolve, reject) => {
     const gotLogin = await page.$('button.join-log-in');
     if (gotLogin) {
       await browser.close();
-      console.log('Failed...');
+      console.log(`${accountsCreated}/${proxies.length * accountsPerProxy} - Failed...`);
+      accountsCreated++;
       resolve(false);
     } else {
       await browser.close();
-      console.log('Account Created...');
+      console.log(`${accountsCreated}/${proxies.length * accountsPerProxy} - Account Created...`);
+      accountsCreated++;
       resolve(true);
     }
   } catch (error) {
-    console.log(`createAccount[${account.email}] Error: `, error);
+    console.log(`createAccount[${account.email}] Error: `, error.message);
     resolve(false);
+  }
+});
+
+const fetchProxies = () => new Promise(async (resolve, reject) => {
+  try {
+    let proxyText = fs.readFileSync('proxy100.txt', 'utf8').split('\n');
+    proxies = proxyText.map(p => {
+      const proxy = {
+        address: '',
+        userName: '',
+        password: '',
+      }
+      let pr = p.replace('\r', '');
+      pr = pr.split(':');
+      proxy.address = pr[0] + ':' + pr[1];
+      proxy.userName = pr[2];
+      proxy.password = pr[3];
+      return proxy;
+    });
+
+    console.log(`Number of Proxies found in proxy100.txt: ${proxies.length}`);
+    console.log(`Number of Accounts to be Created (Accounts Per Proxy x Number of Proxies): ${accountsPerProxy * proxies.length}`);
+    resolve(true);
+  } catch (error) {
+    console.log('fetchProxies Error: ', error);
+    reject(error);
   }
 });
 

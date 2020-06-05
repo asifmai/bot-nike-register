@@ -2,9 +2,7 @@ const chance = require('chance').Chance();
 
 module.exports = {
     siteLink: 'https://www.nike.com/gb/launch',
-    proxy: '',
-    proxyUser: '',
-    proxyPassword: '',
+    accountsPerProxy: 5,
     account: {
         firstName: chance.string({length: 8, alpha: true, casing: 'lower'}),
         lastName: chance.string({length: 8, alpha: true, casing: 'lower'}),
