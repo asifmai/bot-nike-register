@@ -14,7 +14,7 @@ const run = () => new Promise(async (resolve, reject) => {
 
     await fetchProxies();
 
-    for (let i = 1; i < proxies.length; i++) {
+    for (let i = 30; i < proxies.length; i++) {
       for (let j = 0; j < accountsPerProxy; j++) {
         await createAccount(accountDetails, proxies[i]);
       }
@@ -44,6 +44,9 @@ const createAccount = (account, proxy) => new Promise(async (resolve, reject) =>
     await page.authenticate({username: proxy.userName, password: proxy.password});
     await page.goto(siteLink, {timeout: 0, waitUntil: 'load'});
 
+    const acceptCookiesButton = await page.$('button[data-qa="accept-cookies"]');
+    if(acceptCookiesButton) await page.click('button[data-qa="accept-cookies"]');
+
     // Navigate to Sign Up
     await page.waitForSelector('button.join-log-in');
     await page.click('button.join-log-in');
@@ -52,7 +55,7 @@ const createAccount = (account, proxy) => new Promise(async (resolve, reject) =>
     await page.click('div.loginJoinLink > a');
 
     // Wait for input fields
-    console.log('Filling fields...');
+    // console.log('Filling fields...');
     await page.waitForSelector('input[name="emailAddress"]');
 
     // Fill the Fields
@@ -82,7 +85,7 @@ const createAccount = (account, proxy) => new Promise(async (resolve, reject) =>
     await page.waitFor(3000);
 
     // Submit the form
-    console.log('Submitting Form...');
+    // console.log('Submitting Form...');
     await page.click('input[value="JOIN US"]');
     await page.waitFor(10000);
 
@@ -100,6 +103,7 @@ const createAccount = (account, proxy) => new Promise(async (resolve, reject) =>
       resolve(true);
     }
   } catch (error) {
+    if (browser) await browser.close();
     console.log(`createAccount[${account.email}] Error: `, error.message);
     resolve(false);
   }
