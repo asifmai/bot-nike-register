@@ -1,8 +1,7 @@
 const puppeteer = require('puppeteer-extra');
 const fs = require('fs');
 const StealthPlugin = require('puppeteer-extra-plugin-stealth');
-const {siteLink, accountsPerProxy} = require('./keys');
-const accountDetails = require('./keys').account;
+const {siteLink, accountsPerProxy, generateAccount} = require('./keys');
 let proxies = [];
 let accountsCreated = 1;
 
@@ -14,9 +13,9 @@ const run = () => new Promise(async (resolve, reject) => {
 
     await fetchProxies();
 
-    for (let i = 30; i < proxies.length; i++) {
+    for (let i = 0; i < proxies.length; i++) {
       for (let j = 0; j < accountsPerProxy; j++) {
-        await createAccount(accountDetails, proxies[i]);
+        await createAccount(generateAccount(), proxies[i]);
       }
     }
 
@@ -30,10 +29,11 @@ const run = () => new Promise(async (resolve, reject) => {
 })
 
 const createAccount = (account, proxy) => new Promise(async (resolve, reject) => {
+  let browser;
   try {
-    console.log(`${accountsCreated}/${proxies.length * accountsPerProxy} - Creating account using proxy ${proxy.address}...`);
+    console.log(`${accountsCreated}/${proxies.length * accountsPerProxy} - Creating account using proxy "${proxy.address}" with email "${account.email}"...`);
     account.dob = account.dob.replace(/^.*?(?=\/)/gi, account.month);
-    const browser = await puppeteer.launch({
+    browser = await puppeteer.launch({
       headless: false,
       args: [`--proxy-server=${proxy.address}`]
     });
